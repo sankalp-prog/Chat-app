@@ -2,7 +2,7 @@ import { dbConfig as db } from '../lib/db.js';
 import bcrypt from 'bcryptjs';
 import { generateToken } from '../lib/utils.js';
 
-async function userExists(email) {
+async function getUser(email) {
   const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
   return result.rows[0];
 }
@@ -26,8 +26,11 @@ export const signup = async (req, res) => {
     const salt = bcrypt.genSaltSync(10);
     const hash = bcrypt.hashSync(password, salt);
 
+    const userExists = await getUser(email);
     // check if the record already exists by filtering the email
-    if (await userExists(email)) {
+    if (userExists) {
+      console.log('userExists: ');
+      console.log(userExists);
       return res.status(400).json({ message: 'Email already exists' });
     }
     const newUser = await addNewUser(fullName, email, hash);
@@ -50,8 +53,30 @@ export const signup = async (req, res) => {
   }
 };
 
-export const login = (req, res) => {
-  res.send('login route');
+export const login = async (req, res) => {
+  // TODO: user sends an email & pwd, check it against the db
+  // if user email exists in the db, check the pwd to validate.
+  // if user exists then do the same as signup which is generate the jwt token and return it
+  try {
+    const { email, password } = req.body;
+    const existingUser = await getUser(email);
+    console.log('user exists: ', existingUser);
+    if (existingUser) {
+      const passwordMatch = bcrypt.compareSync(password, existingUser.password);
+      if (passwordMatch) {
+        // generate jwt token and send to the user
+        generateToken(existingUser, res);
+        res.status(200).json({ message: 'Login successful' });
+      } else {
+        res.status(401).json({ message: 'Incorrect pasword' });
+      }
+    } else {
+      res.status(401).json({ message: 'User does not exist' });
+    }
+  } catch (error) {
+    console.log('error in login controller');
+    res.status.json({message: 'Internal Server Error'})
+  }
 };
 
 export const logout = (req, res) => {
