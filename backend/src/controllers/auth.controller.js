@@ -8,8 +8,6 @@ async function getUser(email) {
 }
 
 async function addNewUser(name, email, pwd) {
-  // const result = await db.query(`INSERT INTO user (email, full_name, password) VALUES (${email}, ${name}, ${pwd})`);
-  // NOTE: Above code is open to sql injection attacks
   const result = await db.query('INSERT INTO users (email, full_name, password) VALUES ($1, $2, $3) RETURNING id, email, full_name, profile_pic', [email, name, pwd]);
   return result.rows[0];
 }
@@ -48,7 +46,7 @@ export const signup = async (req, res) => {
       res.status(400).json({ message: 'Invalid user data' });
     }
   } catch (error) {
-    console.log('error in signup controller: ', error);
+    console.log('error in signup controller: ', error.message);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 };
@@ -68,17 +66,24 @@ export const login = async (req, res) => {
         generateToken(existingUser, res);
         res.status(200).json({ message: 'Login successful' });
       } else {
-        res.status(401).json({ message: 'Incorrect pasword' });
+        res.status(401).json({ message: 'Incorrect password' });
       }
     } else {
       res.status(401).json({ message: 'User does not exist' });
     }
   } catch (error) {
-    console.log('error in login controller');
-    res.status.json({message: 'Internal Server Error'})
+    console.log('error in login controller', error.message);
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };
 
 export const logout = (req, res) => {
-  res.send('logout route');
+  // TODO: Remove the jwt token from the cookies [empty string]
+  try {
+    res.cookie('jwt', '', { maxAge: 0 });
+    res.status(200).json({ message: 'Successfully Logged out' });
+  } catch (error) {
+    console.log('error in logout controller', error.message);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
 };
