@@ -1,6 +1,6 @@
 import db from '../lib/db.js';
 
-const ALLOWED_COLUMNS = ['email', 'id'];
+const ALLOWED_COLUMNS = ['email', 'id', 'profile_pic'];
 
 function validateColumnName(columnName) {
   if (!ALLOWED_COLUMNS.includes(columnName)) {
@@ -23,7 +23,8 @@ export async function findUser(columnHeader, value) {
   return result?.rows?.[0];
 }
 
+// TODO: need to test when frontend is made
 export async function findAndUpdate(userId, headerOfColumnToUpdate, updatedValue) {
-  const result = await db.query('UPDATE users SET $1 = $2 WHERE id = $3', [headerOfColumnToUpdate, updatedValue, userId]);
+  const result = await db.query(`UPDATE users SET ${validateColumnName(headerOfColumnToUpdate)} = $1 WHERE id = $2`, [updatedValue, userId]);
   return result?.rows?.[0];
 }
