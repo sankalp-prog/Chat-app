@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-export const dbConfig = new pg.Client({
+export default new pg.Client({
   user: process.env.PG_USER,
   host: process.env.PG_HOST,
   database: process.env.PG_DATABASE,
@@ -11,4 +11,3 @@ export const dbConfig = new pg.Client({
   port: process.env.PG_PORT,
 });
 
-// dbConfig.connect();

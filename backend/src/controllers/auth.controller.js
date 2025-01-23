@@ -1,16 +1,7 @@
-import { dbConfig as db } from '../lib/db.js';
+import * as User from '../models/user.model.js';
 import bcrypt from 'bcryptjs';
 import { generateToken } from '../lib/utils.js';
-
-async function getUser(email) {
-  const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
-  return result.rows[0];
-}
-
-async function addNewUser(name, email, pwd) {
-  const result = await db.query('INSERT INTO users (email, full_name, password) VALUES ($1, $2, $3) RETURNING id, email, full_name, profile_pic', [email, name, pwd]);
-  return result.rows[0];
-}
+import cloudinary from '../lib/cloudinary.js';
 
 export const signup = async (req, res) => {
   const { fullName, email, password } = req.body;
@@ -24,14 +15,14 @@ export const signup = async (req, res) => {
     const salt = bcrypt.genSaltSync(10);
     const hash = bcrypt.hashSync(password, salt);
 
-    const userExists = await getUser(email);
+    const userExists = await User.findUser('email', email);
     // check if the record already exists by filtering the email
     if (userExists) {
       console.log('userExists: ');
       console.log(userExists);
       return res.status(400).json({ message: 'Email already exists' });
     }
-    const newUser = await addNewUser(fullName, email, hash);
+    const newUser = await User.addNewUser(fullName, email, hash);
     // Test and check once
     if (newUser) {
       // generate jwt token
@@ -57,7 +48,8 @@ export const login = async (req, res) => {
   // if user exists then do the same as signup which is generate the jwt token and return it
   try {
     const { email, password } = req.body;
-    const existingUser = await getUser(email);
+    console.log('email: ', email);
+    const existingUser = await User.findUser('email', email);
     console.log('user exists: ', existingUser);
     if (existingUser) {
       const passwordMatch = bcrypt.compareSync(password, existingUser.password);
@@ -66,9 +58,11 @@ export const login = async (req, res) => {
         generateToken(existingUser, res);
         res.status(200).json({ message: 'Login successful' });
       } else {
+        // maybe make a more generic message else a hacker will know which field is correct and which to keep guessing
         res.status(401).json({ message: 'Incorrect password' });
       }
     } else {
+      // maybe make a more generic message else a hacker will know which field is correct and which to keep guessing
       res.status(401).json({ message: 'User does not exist' });
     }
   } catch (error) {
@@ -84,6 +78,35 @@ export const logout = (req, res) => {
     res.status(200).json({ message: 'Successfully Logged out' });
   } catch (error) {
     console.log('error in logout controller', error.message);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+// not tested yet, will test when frontend is made
+export const updateProfile = async (req, res) => {
+  try {
+    const { profilePic } = req.body;
+    const userId = req.user.id;
+
+    if (!profilePic) {
+      return res.status(400).json({ message: 'Profile pic is required' });
+    }
+
+    const uploadResponse = await cloudinary.uploader.upload(profilePic);
+    const updatedUser = await User.findAndUpdate(userId, 'profile_pic', uploadResponse.secure_url);
+
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    console.log('error in update profile: ', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const checkAuth = (req, res) => {
+  try {
+    res.status(200).json(req.user);
+  } catch (error) {
+    console.log('Error in checkAuth controller', error.message);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 };

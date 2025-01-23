@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 
-console.log("utils.js: " + process.env.JWT_SECRET);
+console.log('utils.js: ' + process.env.JWT_SECRET);
 
 export const generateToken = (userId, res) => {
   const token = jwt.sign({ userId }, process.env.JWT_SECRET, {
